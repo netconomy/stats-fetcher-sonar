@@ -1,0 +1,13 @@
+{
+    "config": {
+        "metrics": [
+            "sqale_index",
+            "coverage",
+            "ncloc",
+            "comment_lines"
+        ],
+        "sonar": {
+            "url": "http://sonar.local.netconomy.net" 
+        }
+    }
+}
