@@ -23,10 +23,22 @@ func readConfig() (map[string]interface{}, error) {
 	return cfg, nil
 }
 
+func getMetricsFromConfig(cfg map[string]interface{}) []interface{} {
+	return (cfg["metrics"]).([]interface{})
+}
+
+func getSonarUrlFromConfig(cfg map[string]interface{}) string {
+	return ((cfg["sonar"]).(map[string]interface{})["url"]).(string)
+}
+
+func buildQueryUrl(baseUrl string, project string, metric string) string {
+	return baseUrl + "/api/resources?format=json&includetrends=true&resource=" + project + "&metrics=" + metric
+}
+
 func main() {
 	var port int
 	readConf, _ := readConfig()
-	cfg := readConf["config"]
+	cfg := readConf["config"].(map[string]interface{})
 	usage := `SCC Stats Fetcher.
 
 	Usage:
@@ -36,19 +48,20 @@ func main() {
 		-h --help     Show this screen.`
 
 	arguments, _ := docopt.Parse(usage, nil, true, "SCC Statsfetcher 1.0", false)
-	// metrics := (cfg.(map[string]interface{})["metrics"]).([]interface{})
-	sonarUrl := ((cfg.(map[string]interface{})["sonar"]).(map[string]interface{})["url"]).(string)
-
-	res, _ := http.Get(sonarUrl + "/api/resources?format=json&includetrends=true&resource=eco2:lutz_eco&metrics=coverage")
-	body, _ := ioutil.ReadAll(res.Body)
-	fmt.Println(string(body))
+	sonarUrl := getSonarUrlFromConfig(cfg)
+	metrics := getMetricsFromConfig(cfg)
 
 	if arguments["serve"] == true {
 		r := mux.NewRouter()
 		r.HandleFunc("/fetch/{project}", func(resp http.ResponseWriter, req *http.Request) {
 			vars := mux.Vars(req)
 			project := vars["project"]
-			io.WriteString(resp, "hi\n"+project)
+
+			res, _ := http.Get(buildQueryUrl(sonarUrl, project, metrics[0].(string)))
+			body, _ := ioutil.ReadAll(res.Body)
+			fmt.Println(string(body))
+
+			io.WriteString(resp, "hi\n"+"project: "+project+" response: "+string(body))
 		})
 		http.Handle("/", r)
 		port, _ = strconv.Atoi(arguments["<port>"].(string))

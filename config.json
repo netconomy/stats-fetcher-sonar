@@ -7,7 +7,11 @@
             "comment_lines"
         ],
         "sonar": {
-            "url": "http://sonar.local.netconomy.net" 
+            "url": "http://sonar.local.netconomy.net"
+        },
+        "UDPtarget": {
+            "ip": "127.0.0.1",
+            "port": "8080"
         }
     }
 }
