@@ -4,7 +4,26 @@
             "sqale_index",
             "coverage",
             "ncloc",
-            "comment_lines"
+            "lines",
+            "comment_lines",
+            "complexity",
+            "class_complexity",
+            "function_complexity",
+            "tests",
+            "test_execution_time",
+            "test_errors",
+            "skipped_tests",
+            "line_coverage",
+            "branch_coverage",
+            "duplicated_lines",
+            "duplicated_blocks",
+            "weighted_violations",
+            "blocker_violations",
+            "critical_violations",
+            "major_violations",
+            "minor_violations",
+            "info_violations",
+            "package_cycles"
         ],
         "sonar": {
             "url": "http://sonar.local.netconomy.net"

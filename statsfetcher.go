@@ -76,10 +76,12 @@ func main() {
 				resultJson := []map[string]interface{}{}
 				json.Unmarshal(body, &resultJson)
 
-				statistics := getStatistics(resultJson)
-				udpPayload := buildUDPPayload(strconv.FormatFloat(statistics, 'f', -1, 64), metric, project)
+				if len(resultJson) > 0 {
+					statistics := getStatistics(resultJson)
+					udpPayload := buildUDPPayload(strconv.FormatFloat(statistics, 'f', -1, 64), metric, project)
 
-				conn.WriteToUDP([]byte(udpPayload), &net.UDPAddr{IP: net.IP{127, 0, 0, 1}, Port: 1337})
+					conn.WriteToUDP([]byte(udpPayload), &net.UDPAddr{IP: net.IP{127, 0, 0, 1}, Port: 1337})
+				}
 			}
 
 			io.WriteString(resp, "metrics tracked for "+project)
