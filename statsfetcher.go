@@ -7,6 +7,7 @@ import (
 	"github.com/gorilla/mux"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
@@ -21,6 +22,15 @@ func readConfig() (map[string]interface{}, error) {
 	json.Unmarshal(file, &cfg)
 	fmt.Printf("unmarshal: %v, %v\n", cfg, cfg["config"])
 	return cfg, nil
+}
+
+func buildUDPPayload(value string, metric string, project string) string {
+	return "sonar.metrics." + project + "." + metric + ":" + value
+}
+
+func getStatistics(json []map[string]interface{}) float64 {
+	msr := json[0]["msr"]
+	return msr.([]interface{})[0].(map[string]interface{})["val"].(float64)
 }
 
 func getMetricsFromConfig(cfg map[string]interface{}) []interface{} {
@@ -56,12 +66,26 @@ func main() {
 		r.HandleFunc("/fetch/{project}", func(resp http.ResponseWriter, req *http.Request) {
 			vars := mux.Vars(req)
 			project := vars["project"]
+			for _, element := range metrics {
+				metric := element.(string)
 
-			res, _ := http.Get(buildQueryUrl(sonarUrl, project, metrics[0].(string)))
-			body, _ := ioutil.ReadAll(res.Body)
-			fmt.Println(string(body))
+				res, _ := http.Get(buildQueryUrl(sonarUrl, project, metric))
+				body, _ := ioutil.ReadAll(res.Body)
 
-			io.WriteString(resp, "hi\n"+"project: "+project+" response: "+string(body))
+				fmt.Println(string(body))
+
+				resultJson := []map[string]interface{}{}
+				json.Unmarshal(body, &resultJson)
+
+				statistics := getStatistics(resultJson)
+
+				udpPayload := buildUDPPayload(strconv.FormatFloat(statistics, 'f', -1, 64), metric, project)
+				fmt.Println(udpPayload)
+
+				conn, _ := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4zero, Port: 0})
+				conn.WriteToUDP([]byte(udpPayload), &net.UDPAddr{IP: net.IP{127, 0, 0, 1}, Port: 1337})
+			}
+			io.WriteString(resp, "metrics tracked for "+project)
 		})
 		http.Handle("/", r)
 		port, _ = strconv.Atoi(arguments["<port>"].(string))
