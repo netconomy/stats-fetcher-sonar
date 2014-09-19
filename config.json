@@ -28,9 +28,9 @@
         "sonar": {
             "url": "http://sonar.local.netconomy.net"
         },
-        "UDPtarget": {
-            "ip": "127.0.0.1",
-            "port": "8080"
+        "udpserver": {
+            "ip": "127.0.0.1/24",
+            "port": 1337
         }
     }
 }

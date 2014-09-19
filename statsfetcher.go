@@ -20,8 +20,13 @@ func readConfig() (map[string]interface{}, error) {
 	}
 	var cfg map[string]interface{}
 	json.Unmarshal(file, &cfg)
-	fmt.Printf("unmarshal: %v, %v\n", cfg, cfg["config"])
 	return cfg, nil
+}
+
+func getUDPAddressFromConfig(cfg map[string]interface{}) net.UDPAddr {
+	udpserver := cfg["udpserver"].(map[string]interface{})
+	parsedIp, _, _ := net.ParseCIDR(udpserver["ip"].(string))
+	return net.UDPAddr{IP: parsedIp, Port: int(udpserver["port"].(float64))}
 }
 
 func buildUDPPayload(value string, metric string, project string) string {
@@ -60,6 +65,9 @@ func main() {
 	arguments, _ := docopt.Parse(usage, nil, true, "SCC Statsfetcher 1.0", false)
 	sonarUrl := getSonarUrlFromConfig(cfg)
 	metrics := getMetricsFromConfig(cfg)
+	udpAddr := getUDPAddressFromConfig(cfg)
+	fmt.Println(sonarUrl)
+	fmt.Println(udpAddr)
 
 	if arguments["serve"] == true {
 		r := mux.NewRouter()
@@ -80,7 +88,7 @@ func main() {
 					statistics := getStatistics(resultJson)
 					udpPayload := buildUDPPayload(strconv.FormatFloat(statistics, 'f', -1, 64), metric, project)
 
-					conn.WriteToUDP([]byte(udpPayload), &net.UDPAddr{IP: net.IP{127, 0, 0, 1}, Port: 1337})
+					conn.WriteToUDP([]byte(udpPayload), &udpAddr)
 				}
 			}
 
