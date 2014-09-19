@@ -23,14 +23,37 @@ func readConfig() (map[string]interface{}, error) {
 	return cfg, nil
 }
 
+func getSonarUrlFromConfig(cfg map[string]interface{}) string {
+	return ((cfg["sonar"]).(map[string]interface{})["url"]).(string)
+}
+
 func getUDPAddressFromConfig(cfg map[string]interface{}) net.UDPAddr {
 	udpserver := cfg["udpserver"].(map[string]interface{})
 	parsedIp, _, _ := net.ParseCIDR(udpserver["ip"].(string))
 	return net.UDPAddr{IP: parsedIp, Port: int(udpserver["port"].(float64))}
 }
 
-func buildUDPPayload(value string, metric string, project string) string {
-	return "sonar.metrics." + project + "." + metric + ":" + value
+func getMetricsFromConfig(cfg map[string]interface{}) []interface{} {
+	return (cfg["metrics"]).([]interface{})
+}
+
+func handleMetric(metric string, project string, sonarUrl string, conn net.UDPConn, udpAddr net.UDPAddr) {
+	res, _ := http.Get(buildQueryUrl(sonarUrl, project, metric))
+	body, _ := ioutil.ReadAll(res.Body)
+
+	resultJson := []map[string]interface{}{}
+	json.Unmarshal(body, &resultJson)
+
+	if len(resultJson) > 0 {
+		statistics := getStatistics(resultJson)
+		udpPayload := buildUDPPayload(strconv.FormatFloat(statistics, 'f', -1, 64), metric, project)
+
+		conn.WriteToUDP([]byte(udpPayload), &udpAddr)
+	}
+}
+
+func buildQueryUrl(baseUrl string, project string, metric string) string {
+	return baseUrl + "/api/resources?format=json&includetrends=true&resource=" + project + "&metrics=" + metric
 }
 
 func getStatistics(json []map[string]interface{}) float64 {
@@ -38,16 +61,8 @@ func getStatistics(json []map[string]interface{}) float64 {
 	return msr.([]interface{})[0].(map[string]interface{})["val"].(float64)
 }
 
-func getMetricsFromConfig(cfg map[string]interface{}) []interface{} {
-	return (cfg["metrics"]).([]interface{})
-}
-
-func getSonarUrlFromConfig(cfg map[string]interface{}) string {
-	return ((cfg["sonar"]).(map[string]interface{})["url"]).(string)
-}
-
-func buildQueryUrl(baseUrl string, project string, metric string) string {
-	return baseUrl + "/api/resources?format=json&includetrends=true&resource=" + project + "&metrics=" + metric
+func buildUDPPayload(value string, metric string, project string) string {
+	return "sonar.metrics." + project + "." + metric + ":" + value
 }
 
 func main() {
@@ -63,38 +78,23 @@ func main() {
 		-h --help     Show this screen.`
 
 	arguments, _ := docopt.Parse(usage, nil, true, "SCC Statsfetcher 1.0", false)
-	sonarUrl := getSonarUrlFromConfig(cfg)
-	metrics := getMetricsFromConfig(cfg)
-	udpAddr := getUDPAddressFromConfig(cfg)
-	fmt.Println(sonarUrl)
-	fmt.Println(udpAddr)
 
 	if arguments["serve"] == true {
+		sonarUrl := getSonarUrlFromConfig(cfg)
+		udpAddr := getUDPAddressFromConfig(cfg)
+		metrics := getMetricsFromConfig(cfg)
+		conn, _ := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4zero, Port: 0})
+
 		r := mux.NewRouter()
 		r.HandleFunc("/fetch/{project}", func(resp http.ResponseWriter, req *http.Request) {
-			vars := mux.Vars(req)
-			project := vars["project"]
-			conn, _ := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4zero, Port: 0})
+			project := mux.Vars(req)["project"]
 
 			for _, element := range metrics {
-				metric := element.(string)
-				res, _ := http.Get(buildQueryUrl(sonarUrl, project, metric))
-				body, _ := ioutil.ReadAll(res.Body)
-
-				resultJson := []map[string]interface{}{}
-				json.Unmarshal(body, &resultJson)
-
-				if len(resultJson) > 0 {
-					statistics := getStatistics(resultJson)
-					udpPayload := buildUDPPayload(strconv.FormatFloat(statistics, 'f', -1, 64), metric, project)
-
-					conn.WriteToUDP([]byte(udpPayload), &udpAddr)
-				}
+				handleMetric(element.(string), project, sonarUrl, *conn, udpAddr)
 			}
 
 			io.WriteString(resp, "metrics tracked for "+project)
 		})
-
 		http.Handle("/", r)
 
 		port, _ = strconv.Atoi(arguments["<port>"].(string))
