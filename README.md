@@ -1,6 +1,34 @@
-Server written in Go for fetching metrics from configurable sonarqube instance and pushes them to a configurable stats server.
+#Sonar Stats Fetcher
 
-build:
+Simple Server written in Go for fetching metrics from a configurable SonarQube instance and pushing these metrics to a configurable endpoint via UDP. 
 
-go get
+#BUILD IT
+
+go get github.com/docopt/docopt-go
+go get github.com/gorilla/mux
 go build
+
+#TEST IT
+
+go get github.com/stretchr/testify
+go test
+
+#CONFIG IT
+
+Use ./config.json or provide another configuration using the --config={file} flag.
+Configuration:
+* metrics to fetch
+* the SonarQube instance to fetch from
+* the UDP Endpoint to push the data to
+
+#RUN IT
+
+./scc-statsfetcher serve {port}
+
+access via: http://localhost:{port}/fetch/{projectname}
+
+#TODOS
+
+* create a Makefile
+* write some more tests
+
