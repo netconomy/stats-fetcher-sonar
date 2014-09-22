@@ -13,13 +13,15 @@ import (
 	"strconv"
 )
 
-func readConfig() (map[string]interface{}, error) {
-	file, e := ioutil.ReadFile("./config.json")
+func readConfig(filepath string) (map[string]interface{}, error) {
+	file, e := ioutil.ReadFile(filepath)
 	if e != nil {
-		fmt.Printf("File error: %v\n", e)
+		return nil, e
 	}
 	var cfg map[string]interface{}
-	json.Unmarshal(file, &cfg)
+	if e = json.Unmarshal(file, &cfg); e != nil {
+		return nil, e
+	}
 	return cfg, nil
 }
 
@@ -67,23 +69,44 @@ func buildUDPPayload(value string, metric string, project string) string {
 
 func main() {
 	var port int
-	readConf, _ := readConfig()
-	cfg := readConf["config"].(map[string]interface{})
 	usage := `SCC Stats Fetcher.
 
-	Usage:
-		scc-statsfetcher serve <port>
+Usage:
+    scc-statsfetcher serve [--config=FILE] <port>
+    scc-statsfetcher -h | --help
 
-	Options:
-		-h --help     Show this screen.`
+Options:
+    --config=FILE       specify a config file [default: ./config.json]
+    -h  --help          show usage information
+`
 
-	arguments, _ := docopt.Parse(usage, nil, true, "SCC Statsfetcher 1.0", false)
+	arguments, err := docopt.Parse(usage, nil, true, "SCC Statsfetcher 1.0", false)
+
+	if err != nil {
+		fmt.Printf("Failed to parse arguments: %v\n", err)
+		os.Exit(1)
+	}
 
 	if arguments["serve"] == true {
+		readConf, err := readConfig(arguments["--config"].(string))
+
+		if err != nil {
+			fmt.Printf("Failed to parse configuration file: %v\n", err)
+			os.Exit(1)
+		}
+
+		cfg := readConf["config"].(map[string]interface{})
 		sonarUrl := getSonarUrlFromConfig(cfg)
 		udpAddr := getUDPAddressFromConfig(cfg)
 		metrics := getMetricsFromConfig(cfg)
-		conn, _ := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4zero, Port: 0})
+		conn, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4zero, Port: 0})
+
+		if err != nil {
+			fmt.Printf("Failed to create UDP listener: %v\n", err)
+			os.Exit(0)
+		}
+
+		defer conn.Close()
 
 		r := mux.NewRouter()
 		r.HandleFunc("/fetch/{project}", func(resp http.ResponseWriter, req *http.Request) {
