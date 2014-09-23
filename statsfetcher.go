@@ -42,22 +42,26 @@ func getMetricsFromConfig(cfg map[string]interface{}) []interface{} {
 	return (cfg["metrics"]).([]interface{})
 }
 
-func handleMetric(metric string, project string, sonarUrl string, conn net.UDPConn, udpAddr net.UDPAddr) {
+func handleMetric(metric string, project string, sonarUrl string) (string, error) {
 	res, reqErr := http.Get(buildQueryUrl(sonarUrl, project, metric))
-	if reqErr == nil {
-		body, respErr := ioutil.ReadAll(res.Body)
-		if respErr == nil {
-			resultJson := []map[string]interface{}{}
-			jsonErr := json.Unmarshal(body, &resultJson)
-
-			if jsonErr == nil && len(resultJson) > 0 {
-				statistics := getStatistics(resultJson)
-				udpPayload := buildUDPPayload(strconv.FormatFloat(statistics, 'f', -1, 64), metric, project)
-
-				conn.WriteToUDP([]byte(udpPayload), &udpAddr)
-			}
-		}
+	if reqErr != nil {
+		return "", reqErr
 	}
+	body, respErr := ioutil.ReadAll(res.Body)
+	if respErr != nil {
+		return "", respErr
+	}
+	resultJson := []map[string]interface{}{}
+	jsonErr := json.Unmarshal(body, &resultJson)
+	if jsonErr != nil {
+		return "", jsonErr
+	}
+
+	if len(resultJson) > 0 {
+		statistics := getStatistics(resultJson)
+		return buildUDPPayload(strconv.FormatFloat(statistics, 'f', -1, 64), metric, project), nil
+	}
+	return "", nil
 }
 
 func buildQueryUrl(baseUrl string, project string, metric string) string {
@@ -125,7 +129,10 @@ Options:
 			project := mux.Vars(req)["project"]
 
 			for _, element := range metrics {
-				handleMetric(element.(string), project, sonarUrl, *conn, udpAddr)
+				udpPayload, err := handleMetric(element.(string), project, sonarUrl)
+				if err == nil && udpPayload != "" {
+					conn.WriteToUDP([]byte(udpPayload), &udpAddr)
+				}
 			}
 
 			io.WriteString(resp, "metrics tracked for "+project)

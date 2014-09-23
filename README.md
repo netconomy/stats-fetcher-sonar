@@ -4,14 +4,12 @@ Simple Server written in Go for fetching metrics from a configurable SonarQube i
 
 #BUILD IT
 
-go get github.com/docopt/docopt-go
-go get github.com/gorilla/mux
-go build
+make deps
+make
 
 #TEST IT
 
-go get github.com/stretchr/testify
-go test
+make test
 
 #CONFIG IT
 
@@ -23,12 +21,11 @@ Configuration:
 
 #RUN IT
 
-./scc-statsfetcher serve {port}
+./statsfetcher serve {port}
 
 access via: http://localhost:{port}/fetch/{projectname}
 
 #TODOS
 
-* create a Makefile
-* write some more tests
+* multithreading / channels, that UDPConn isn't shared
 
