@@ -140,7 +140,7 @@ Options:
 		http.Handle("/", r)
 
 		port, _ = strconv.Atoi(arguments["<port>"].(string))
-		if err := http.ListenAndServe(fmt.Sprintf("127.0.0.1:%v", port), nil); err != nil {
+		if err := http.ListenAndServe(fmt.Sprintf(":%v", port), nil); err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
