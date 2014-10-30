@@ -1,4 +1,4 @@
-#Sonar Stats Fetcher
+#stats-fetcher-sonar
 
 Simple Server written in Go for fetching metrics from a configurable SonarQube instance and pushing these metrics to a configurable endpoint via UDP. 
 
