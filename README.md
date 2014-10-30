@@ -28,7 +28,3 @@ Configuration:
 
 access via: http://localhost:{port}/fetch/{projectname}
 
-#TODOS
-
-* multithreading / channels, that UDPConn isn't shared
-
