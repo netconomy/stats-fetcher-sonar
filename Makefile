@@ -6,7 +6,7 @@ DEPENDENCIES := github.com/docopt/docopt-go \
 all: build test
 
 build:
-		go build statsfetcher.go 
+		go build main.go 
 
 test:
 		go test -v $(PACKAGES)

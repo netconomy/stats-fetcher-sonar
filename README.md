@@ -24,7 +24,7 @@ Configuration:
 
 #RUN
 
-./statsfetcher serve {port}
+./stats-fetcher-sonar serve {port}
 
 access via: http://localhost:{port}/fetch/{projectname}
 
