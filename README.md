@@ -2,17 +2,17 @@
 
 Simple Server written in Go for fetching metrics from a configurable SonarQube instance and pushing these metrics to a configurable endpoint via UDP. 
 
-#BUILD IT
+#BUILD
 
 make deps
 
 make
 
-#TEST IT
+#TEST
 
 make test
 
-#CONFIG IT
+#CONFIG
 
 Use ./config.json or provide another configuration using the --config={file} flag.
 
@@ -22,7 +22,7 @@ Configuration:
 * the SonarQube instance to fetch from
 * the UDP Endpoint to push the data to
 
-#RUN IT
+#RUN
 
 ./statsfetcher serve {port}
 
